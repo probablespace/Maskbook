@@ -40,6 +40,8 @@ import { useEtherTokenDetailed } from '../../../web3/hooks/useEtherTokenDetailed
 import { useTokenBalance } from '../../../web3/hooks/useTokenBalance'
 import { EthereumMessages } from '../../Ethereum/messages'
 import { SelectERC20TokenDialog } from '../../Ethereum/UI/SelectERC20TokenDialog'
+import { EthereumWalletConnectedBoundary } from '../../../web3/UI/EthereumWalletConnectedBoundary'
+import { EthereumERC20TokenApprovedBoundary } from '../../../web3/UI/EthereumERC20TokenApprovedBoundary'
 
 const useStyles = makeStyles((theme) =>
     createStyles({
@@ -80,6 +82,7 @@ export function RedPacketForm(props: RedPacketFormProps) {
     const account = useAccount()
     const chainId = useChainId()
     const chainIdValid = useChainIdValid()
+    const RED_PACKET_ADDRESS = useConstant(RED_PACKET_CONSTANTS, 'HAPPY_RED_PACKET_ADDRESS')
 
     //#region select token
     const { value: etherTokenDetailed } = useEtherTokenDetailed()
@@ -130,19 +133,6 @@ export function RedPacketForm(props: RedPacketFormProps) {
         token?.type ?? EthereumTokenType.Ether,
         token?.address ?? '',
     )
-    //#endregion
-    //#region approve ERC20
-    const HappyRedPacketContractAddress = useConstant(RED_PACKET_CONSTANTS, 'HAPPY_RED_PACKET_ADDRESS')
-    const [approveState, approveCallback] = useERC20TokenApproveCallback(
-        token?.type === EthereumTokenType.ERC20 ? token.address : '',
-        amount.toFixed(),
-        HappyRedPacketContractAddress,
-    )
-    const onApprove = useCallback(async () => {
-        if (approveState !== ApproveState.NOT_APPROVED) return
-        await approveCallback()
-    }, [approveState, approveCallback])
-    const approveRequired = approveState === ApproveState.NOT_APPROVED || approveState === ApproveState.PENDING
     //#endregion
 
     //#region blocking
@@ -313,34 +303,17 @@ export function RedPacketForm(props: RedPacketFormProps) {
                 />
             </div>
 
-            {!account ? (
-                <ActionButton className={classes.button} fullWidth variant="contained" size="large" onClick={onConnect}>
-                    {t('plugin_wallet_connect_a_wallet')}
-                </ActionButton>
-            ) : !chainIdValid ? (
-                <ActionButton className={classes.button} disabled fullWidth variant="contained" size="large">
-                    {t('plugin_wallet_invalid_network')}
-                </ActionButton>
-            ) : approveRequired ? (
-                <ActionButton
-                    className={classes.button}
-                    fullWidth
-                    variant="contained"
-                    size="large"
-                    disabled={approveState === ApproveState.PENDING}
-                    onClick={onApprove}>
-                    {approveState === ApproveState.NOT_APPROVED ? `Approve ${token.symbol}` : ''}
-                    {approveState === ApproveState.PENDING ? `Approve... ${token.symbol}` : ''}
-                </ActionButton>
-            ) : validationMessage ? (
-                <ActionButton className={classes.button} fullWidth variant="contained" disabled>
-                    {validationMessage}
-                </ActionButton>
-            ) : (
-                <ActionButton className={classes.button} fullWidth onClick={createCallback}>
-                    {`Send ${formatBalance(totalAmount, token.decimals ?? 0)} ${token.symbol}`}
-                </ActionButton>
-            )}
+            <EthereumWalletConnectedBoundary>
+                <EthereumERC20TokenApprovedBoundary
+                    amount={amount.toFixed()}
+                    token={token?.type === EthereumTokenType.ERC20 ? token : undefined}
+                    spender={RED_PACKET_ADDRESS}>
+                    <ActionButton className={classes.button} fullWidth onClick={createCallback}>
+                        {validationMessage || `Send ${formatBalance(totalAmount, token.decimals ?? 0)} ${token.symbol}`}
+                    </ActionButton>
+                </EthereumERC20TokenApprovedBoundary>
+            </EthereumWalletConnectedBoundary>
+
             <SelectERC20TokenDialog
                 open={openSelectERC20TokenDialog}
                 includeTokens={[]}

@@ -187,25 +187,6 @@ export function Trader(props: TraderProps) {
     )
     //#endregion
 
-    //#region approve
-    const RouterV2Address = useConstant(TRADE_CONSTANTS, 'UNISWAP_V2_ROUTER_ADDRESS')
-    const { approveToken, approveAmount } = useTradeApproveComputed(trade, inputToken)
-    const [approveState, approveCallback] = useERC20TokenApproveCallback(
-        approveToken?.address ?? '',
-        approveAmount,
-        RouterV2Address,
-    )
-    const onApprove = useCallback(async () => {
-        if (approveState !== ApproveState.NOT_APPROVED) return
-        await approveCallback()
-    }, [approveState])
-
-    const onExactApprove = useCallback(async () => {
-        if (approveState !== ApproveState.NOT_APPROVED) return
-        await approveCallback(true)
-    }, [approveState])
-    //#endregion
-
     //#region blocking (swap)
     const [tradeState, tradeCallback, resetTradeCallback] = useTradeCallback(provider, trade)
     const [openConfirmDialog, setOpenConfirmDialog] = useState(false)
@@ -275,7 +256,6 @@ export function Trader(props: TraderProps) {
     return (
         <div className={classes.root}>
             <TradeForm
-                approveState={approveState}
                 trade={trade}
                 strategy={strategy}
                 loading={asyncTradeComputed.loading}
@@ -290,8 +270,6 @@ export function Trader(props: TraderProps) {
                 onReverseClick={onReverseClick}
                 onRefreshClick={onRefreshClick}
                 onTokenChipClick={onTokenChipClick}
-                onApprove={onApprove}
-                onExactApprove={onExactApprove}
                 onSwap={() => setOpenConfirmDialog(true)}
             />
             {trade && inputToken && outputToken ? (

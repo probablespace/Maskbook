@@ -14,6 +14,7 @@ export function useTradeApproveComputed(
             return {
                 approveToken: undefined,
                 approveAmount: '0',
+                approveAddress: '',
             }
         return {
             approveToken:
@@ -27,6 +28,7 @@ export function useTradeApproveComputed(
                           token.symbol ?? '',
                       ),
             approveAmount: trade.maximumSold.toFixed(),
+            approveAddress: '',
         }
     }, [trade, token, chainId])
 }
