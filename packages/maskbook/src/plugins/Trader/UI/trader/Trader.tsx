@@ -1,9 +1,10 @@
 import { useState, useCallback, useEffect, useRef } from 'react'
+import { useTimeoutFn } from 'react-use'
 import { makeStyles, createStyles } from '@material-ui/core'
 import type { Trade } from '@uniswap/sdk'
 import { v4 as uuid } from 'uuid'
 import { useStylesExtends } from '../../../../components/custom-ui-helper'
-import { ERC20TokenDetailed, EthereumTokenType, EtherTokenDetailed } from '../../../../web3/types'
+import { ERC20TokenDetailed, EthereumTokenType, EtherTokenDetailed, ChainId } from '../../../../web3/types'
 import { useConstant } from '../../../../web3/hooks/useConstant'
 import { TradeForm } from './TradeForm'
 import { TradeRoute } from '../uniswap/TradeRoute'
@@ -12,7 +13,7 @@ import { ConfirmDialog } from './ConfirmDialog'
 import { useERC20TokenApproveCallback, ApproveState } from '../../../../web3/hooks/useERC20TokenApproveCallback'
 import { useTradeApproveComputed } from '../../trader/useTradeApproveComputed'
 import { TradeActionType } from '../../trader/useTradeState'
-import { TokenPanelType, TradeComputed, TradeProvider } from '../../types'
+import { TokenPanelType, TradeComputed, TradeProvider, Coin } from '../../types'
 import { TRADE_CONSTANTS } from '../../constants'
 import { sleep } from '../../../../utils/utils'
 import { TransactionStateType } from '../../../../web3/hooks/useTransactionState'
@@ -27,11 +28,12 @@ import { useTradeStateComputed } from '../../trader/useTradeStateComputed'
 import { useTokenBalance } from '../../../../web3/hooks/useTokenBalance'
 import { getActivatedUI } from '../../../../social-network/ui'
 import { EthereumMessages } from '../../../Ethereum/messages'
-import { SelectTokenDialog } from '../../../Ethereum/UI/SelectTokenDialog'
-import { EthereumBlockNumber } from '../../../../web3/UI/EthereumBlockNumber'
 import Services from '../../../../extension/service'
-import { useAsyncRetry, useTimeoutFn } from 'react-use'
+import { UST } from '../../constants'
+import { useTimeoutFn } from 'react-use'
 import { SelectTokenDialogEvent, WalletMessages } from '../../../Wallet/messages'
+import { useChainId } from '../../../../web3/hooks/useChainState'
+import { createERC20Token, createEtherToken } from '../../../../web3/helpers'
 
 const useStyles = makeStyles((theme) => {
     return createStyles({
@@ -54,12 +56,14 @@ const useStyles = makeStyles((theme) => {
 })
 
 export interface TraderProps extends withClasses<KeysInferFromUseStyles<typeof useStyles>> {
-    fromToken: EtherTokenDetailed | ERC20TokenDetailed
-    toToken?: EtherTokenDetailed | ERC20TokenDetailed
+    coin: Coin
+    coinDetailed: ERC20TokenDetailed | EtherTokenDetailed | undefined
 }
 
 export function Trader(props: TraderProps) {
-    const { fromToken, toToken } = props
+    const { coin, coinDetailed } = props
+    const { decimals } = coinDetailed ?? coin
+    const chainId = useChainId()
     const classes = useStylesExtends(useStyles(), props)
 
     const provider = useValueRef(currentTradeProviderSettings)
@@ -74,13 +78,15 @@ export function Trader(props: TraderProps) {
     useEffect(() => {
         dispatchTradeStore({
             type: TradeActionType.UPDATE_INPUT_TOKEN,
-            token: fromToken,
+            token: chainId === ChainId.Mainnet && coin.is_mirrored ? UST : createEtherToken(chainId),
         })
         dispatchTradeStore({
             type: TradeActionType.UPDATE_OUTPUT_TOKEN,
-            token: toToken,
+            token: coin.eth_address
+                ? createERC20Token(chainId, coin.eth_address!, decimals ?? 0, coin.name ?? '', coin.symbol ?? '')
+                : undefined,
         })
-    }, [fromToken, toToken])
+    }, [])
     //#endregion
 
     //#region switch tokens
@@ -333,7 +339,6 @@ export function Trader(props: TraderProps) {
                     ) : null}
                 </>
             ) : null}
-            <EthereumBlockNumber />
         </div>
     )
 }
