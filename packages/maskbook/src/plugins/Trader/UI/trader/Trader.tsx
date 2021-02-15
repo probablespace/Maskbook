@@ -30,7 +30,6 @@ import { getActivatedUI } from '../../../../social-network/ui'
 import { EthereumMessages } from '../../../Ethereum/messages'
 import Services from '../../../../extension/service'
 import { UST } from '../../constants'
-import { useTimeoutFn } from 'react-use'
 import { SelectTokenDialogEvent, WalletMessages } from '../../../Wallet/messages'
 import { useChainId } from '../../../../web3/hooks/useChainState'
 import { createERC20Token, createEtherToken } from '../../../../web3/helpers'
@@ -86,7 +85,7 @@ export function Trader(props: TraderProps) {
                 ? createERC20Token(chainId, coin.eth_address!, decimals ?? 0, coin.name ?? '', coin.symbol ?? '')
                 : undefined,
         })
-    }, [])
+    }, [coin, chainId, decimals])
     //#endregion
 
     //#region switch tokens
